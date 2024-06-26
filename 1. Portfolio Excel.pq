@@ -1,0 +1,27 @@
+let
+    Origen = Excel.Workbook(File.Contents("C:\Users\danny\OneDrive - BigCsv\2. Formaciones\3. Pregrabadas\5. Portfolio, CV y Linkedin\2. Portfolios\1. PortFolio Excel\GranSantiagoMercadoWeb_inmobiliaria.xlsx"), null, true),
+    #"Cifras Inmobiliarias Santiago_Sheet" = Origen{[Item="Cifras Inmobiliarias Santiago",Kind="Sheet"]}[Data],
+    #"Tabla transpuesta" = Table.Transpose(#"Cifras Inmobiliarias Santiago_Sheet"),
+    #"Rellenar hacia abajo" = Table.FillDown(#"Tabla transpuesta",{"Column1"}),
+    #"Filas filtradas" = Table.SelectRows(#"Rellenar hacia abajo", each ([Column3] <> null)),
+    #"Columnas combinadas" = Table.CombineColumns(#"Filas filtradas",{"Column1", "Column2"},Combiner.CombineTextByDelimiter("-", QuoteStyle.None),"Combinada"),
+    #"Tabla transpuesta1" = Table.Transpose(#"Columnas combinadas"),
+    #"Encabezados promovidos" = Table.PromoteHeaders(#"Tabla transpuesta1", [PromoteAllScalars=true]),
+    #"Tipo cambiado" = Table.TransformColumnTypes(#"Encabezados promovidos",{{"MERCADO GRAN SANTIAGO-", Int64.Type}, {"MERCADO GRAN SANTIAGO-_1", type text}, {"Departamentos-Stock", Int64.Type}, {"Departamentos-Ventas", Int64.Type}, {"Departamentos-Meses", type number}, {"Casas-Stock", Int64.Type}, {"Casas-Ventas", Int64.Type}, {"Casas-Meses", type number}, {"Viviendas-Stock", Int64.Type}, {"Viviendas-Ventas", Int64.Type}, {"Viviendas-Meses", type number}}),
+    #"Filas filtradas2" = Table.SelectRows(#"Tipo cambiado", each ([#"MERCADO GRAN SANTIAGO-_1"] <> null and [#"MERCADO GRAN SANTIAGO-_1"] <> "Gerencia de Estudios , Cámara Chilena de la Construcción")),
+    #"Rellenar hacia abajo1" = Table.FillDown(#"Filas filtradas2",{"MERCADO GRAN SANTIAGO-"}),
+    #"Columnas con nombre cambiado" = Table.RenameColumns(#"Rellenar hacia abajo1",{{"MERCADO GRAN SANTIAGO-_1", "Mes"}}),
+    #"Otras columnas con anulación de dinamización" = Table.UnpivotOtherColumns(#"Columnas con nombre cambiado", {"MERCADO GRAN SANTIAGO-", "Mes"}, "Atributo", "Valor"),
+    #"Dividir columna por delimitador" = Table.SplitColumn(#"Otras columnas con anulación de dinamización", "Atributo", Splitter.SplitTextByDelimiter("-", QuoteStyle.Csv), {"Atributo.1", "Atributo.2"}),
+    #"Tipo cambiado1" = Table.TransformColumnTypes(#"Dividir columna por delimitador",{{"Atributo.1", type text}, {"Atributo.2", type text}}),
+    #"Columna dinamizada" = Table.Pivot(#"Tipo cambiado1", List.Distinct(#"Tipo cambiado1"[Atributo.2]), "Atributo.2", "Valor", List.Sum),
+    #"Columnas con nombre cambiado1" = Table.RenameColumns(#"Columna dinamizada",{{"MERCADO GRAN SANTIAGO-", "Año"}, {"Atributo.1", "Inmueble"}}),
+    #"Columnas combinadas1" = Table.CombineColumns(Table.TransformColumnTypes(#"Columnas con nombre cambiado1", {{"Año", type text}}, "es-CL"),{"Mes", "Año"},Combiner.CombineTextByDelimiter("-", QuoteStyle.None),"Combinada"),
+    #"Valor reemplazado" = Table.ReplaceValue(#"Columnas combinadas1","Ene","Jan",Replacer.ReplaceText,{"Combinada"}),
+    #"Valor reemplazado1" = Table.ReplaceValue(#"Valor reemplazado","Ago","Aug",Replacer.ReplaceText,{"Combinada"}),
+    #"Valor reemplazado2" = Table.ReplaceValue(#"Valor reemplazado1","Abr","Apr",Replacer.ReplaceText,{"Combinada"}),
+    #"Valor reemplazado3" = Table.ReplaceValue(#"Valor reemplazado2","Dic","Dec",Replacer.ReplaceText,{"Combinada"}),
+    #"Tipo cambiado con configuración regional" = Table.TransformColumnTypes(#"Valor reemplazado3", {{"Combinada", type date}}, "es-CL"),
+    #"Columnas con nombre cambiado2" = Table.RenameColumns(#"Tipo cambiado con configuración regional",{{"Combinada", "Fecha"}})
+in
+    #"Columnas con nombre cambiado2"
